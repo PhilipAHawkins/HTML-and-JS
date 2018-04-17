@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+	<!--
+	<h3 class="box_headers"> Mouse Position Sample: 300 by 150 and 500 by 500 </h3>
+	<span>
+	<canvas id="myCanvas2" width = "500" height = "500"></canvas>
+	</span>
+
+	<span>
+		<canvas id="myCanvas"></canvas>
+	</span>
+	<span>
+		<canvas id="myCanvas"></canvas>
+	</span>-->
+<body>
+<p></p>
+<a id="download" download="myImage.jpg" href="" onclick="download_img(this);" 
+	disabled="disabled">Download jpg (disabled)</a>
+
+<div class="chart">Made using a magic number to set the bar width
+<!--- without D3 we have to hard-code the bar values like below	
+
+	<div style="width: 40px;">4</div>
+	<div style="width: 80px;">8</div>
+	<div style="width: 150px;">15</div>
+	<div style="width: 160px;">16</div>
+	<div style="width: 230px;">23</div>
+	<div style="width: 420px;">42</div>
+	-->
+  </div>
+  <div class="chart2">Made with d3.ScaleLinear instead</div>
+  <div>Made with d3.ScaleLinear and SVG</div> 
+  <svg class="chart3"></svg>
+  <div>Check out the markup for the SVG. Pretty crazy how different it is.</div> 
+  <div>You know how they say D3 has a steep learning curve? You're looking at it.</div> 
+</body>
+<script type="text/javascript">
+/*
+Fun stuff
+	var canvas = document.getElementById("myCanvas");
+	var ctx = canvas.getContext("2d");
+	ctx.font = "16px Arial";
+
+	canvas.addEventListener("mousemove",function(e) {
+	var cRect = canvas.getBoundingClientRect();
+	var canvasX = Math.round(e.clientX - cRect.left);
+	var canvasY = Math.round(e.clientY - cRect.top);
+	ctx.clearRect(0,0, canvas.width, canvas.height);
+	ctx.fillText("X: "+canvasX+", Y: "+canvasY,10,20);
+	});
+	
+	var canvas2 = document.getElementById("myCanvas2");
+	var ctx2 = canvas2.getContext("2d");
+	ctx2.font = "24px Verdana";
+
+	canvas2.addEventListener("mousemove",function(e) {
+		var cRect = canvas2.getBoundingClientRect();
+		var canvas2X = Math.round(e.clientX - cRect.left);
+		var canvas2Y = Math.round(e.clientY - cRect.top);
+		ctx2.clearRect(0,0, canvas2.width, canvas2.height);
+		ctx2.fillText("X: "+canvas2X+", Y: "+canvas2Y,10,20);
+		});
+
+	var ox = canvas.width / 2;
+	var oy = canvas.height / 2;
+	ctx.font = "42px serif";
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.fillStyle = "#800";
+	ctx.fillRect(ox / 2, oy / 2, ox, oy);	
+Now serious stuff */
+download_img = function(el) {
+// get image URI from canvas object
+var imageURI = canvas.toDataURL("image/jpg");
+el.href = imageURI;
+};
+
+var body = d3.select("body");
+var div = body.append("div");
+div.html("Hello, world!");  // take note that this was sent to a JS-appended div.
+//since it didn't alter an existing div, it goes to the bottom of the page.
+
+var data = [4, 8, 15, 16, 23, 42];
+d3.select(".chart") //nothing draws unless you set the CSS for this. You just see numbers.
+  .selectAll("div")
+    .data(data)
+  .enter().append("div")
+    .style("width", function(d) { return d * 20 + "px"; })
+    .text(function(d) { return d; });
+
+var chart = d3.select(".chart");
+var bar = chart.selectAll("div");
+var barUpdate = bar.data(data);
+var barEnter = barUpdate.enter().append("div");
+barEnter.style("width", function(d) { return d * 10 + "px"; });
+barEnter.text(function(d) { return d; });
+
+var width = 420,
+    barHeight = 20;
+
+var x = d3.scaleLinear() //lol the article said scale.linear()
+	.domain([0, d3.max(data)]) //whatever the top value is. We can reuse this block.
+	.range([0, width]); //420. 420 is the number of pixels we decided to make it. 0 to max pixels.
+
+d3.select(".chart2") //don't forget to create a CSS selection for your custom class!
+  .selectAll("div")
+    .data(data)
+  .enter().append("div")
+    .style("width", function(d) { return x(d) + "px"; })
+	.text(function(d) { return d; });
+	
+// now let's use SVG. Since the HTML states that the element is SVG, not a Div, we code
+// the elements for it as such.
+
+var chart = d3.select(".chart3")
+    .attr("width", width)
+    .attr("height", barHeight * data.length);
+
+var bar = chart.selectAll("g")
+    .data(data)
+  .enter().append("g")
+    .attr("transform", function(d, i) { return "translate(0," + i * barHeight + ")"; });
+
+bar.append("rect")
+    .attr("width", x) //re-using our scaleLinear function
+    .attr("height", barHeight - 1);
+
+bar.append("text")
+	.attr("x", function(d) { return x(d) - 3; }) 
+	// "-3" is the recommended set for bar charts. it's saying to put text 3 pixels to
+	// the left of the end of the bar chart. You can see this in the markup:
+	// the 3rd bar has a value of x="157". The Width for that bar is 160, so the text is at 157.
+    .attr("y", barHeight / 2) // so, 10. barHeight is 20. 10 pixels up from y, 10 pixels down.
+    .attr("dy", ".35em") // seems to be aligning the text to the center. Doc doesn't say why. 
+    .text(function(d) { return d; });
+// Oh yeah sure, it's more lines of code. I give you that.
+// But literally everything here was done programatically.
+// The number of bars, the exact height and width, the linear scale, where to put text.
+// and on and on and on. Want the text moved? Just change the function. Everything's in a function.
+</script>
+<style>
+/*
+CSS crib since I can never remember this:
+- select an HTML element with "element" {} (p or head or body etc)
+- select an id with "# {}"
+- select a class with ". {}"
+- select a sublcass with a second "." (.class.subclass {})
+- select multiple things with comma separation
+- select specific classes in an element with "element.class {}"
+- select on a specific id and class with "#id.class {}"
+- selecting attributes
+	1. select an attribute with "element[] {}"
+	2. select on attribute value with "element[attribute="value"] {}"
+	3. select on "in string" attribute values with "element[attribute~="value"] {}"
+	4. select on "starts with" attribute values with "element[attribute|="value"] {}"
+	5. select on "starts with but doesn't perfectly match" attribute values with "element[attribute^="value"] {}"
+	6. select on "ends with" attribute values with "element[attribute$="value"] {}"
+	7. select on "contains" attribute values with "element[attribute*="value"] {}"
+- select pseudo-classes with a colon like "<your tag here>:hover {}"
+- select a pseudo-element with two colons like <your tag here>::first-line {}"
+- select with a "combinator"::
+	1. Descendant selectors let you select all of the elements inside of a top-level
+		element with just "top-level-element element2 {}"
+	2. Child selectors (think XML nodes- anything one level down from a parent, unlike 
+		"descendants") use a ">" like "div > p {}"
+	3. Adjacent selectors use a + and select whatever the next element meeting 
+		the criteria is, like "div + p {}" picks whatever p element comes after a div
+	4. Sibling selectors use a ~ and select whatever elements meet the criteria for 
+		the 2nd element given, like "div ~ p" selects all p elements after a div.
+- generally an id should always be specific on a page, so if you
+	find yourself needing to combine a selector with id and classes/elements
+	then you need to go back and decide if your id isn't sufficient.
+- if you REALLY need to select an element and id, you can do "element#id {}"
+- Style sheets that contradict are chosen based on
+	which one loads LAST, as determined by the order of the HTML.
+	e.g., style sheets loading after the below inline style will 
+	overrule it, while stylesheets loaded before the below inline style
+	will be overruled by the below style.
+	This is known as "cascading order."
+*/
+canvas{ border: 1px solid black; 
+		display : inline;}
+canvas2{ border: 1px;}
+.box_headers {
+	background-color : tomato;
+	color : white;
+	padding : 10px;
+	font-family: Helvetica;
+	}
+.chart div {
+  font: 10px sans-serif;
+  background-color: steelblue;  /*using this instead of "fill" for this chart per doc*/
+  text-align: right;
+  padding: 3px;
+  margin: 1px;
+  color: white;
+}
+.chart2 div {
+  font: 10px sans-serif;
+  background-color: steelblue; 
+  text-align: right;
+  padding: 3px;
+  margin: 1px;
+  color: white;
+}
+
+/* note that the SVG chart's CSS is 2 selections, not 1.
+The shape is one item, the text on the shape another.*/
+.chart3 rect { 
+  fill: steelblue;
+}
+
+.chart3 text {
+  fill: white;
+  font: 10px sans-serif;
+  text-anchor: end;
+}
+body {
+	font-family: "Helvetica", "sans-serif";
+	font-size: 16px;
+}
+</style>
+</html>
