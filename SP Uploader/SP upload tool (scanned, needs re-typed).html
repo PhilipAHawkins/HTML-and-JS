@@ -1,0 +1,233 @@
+<!DOCTYPE html> 
+<html lang="en" > 
+<head> 
+<meta charset="UTF-8"> 
+<title>Bulk Update SharePoint List</title> 
+<Script type="text/javascript" src=" . . /JavaScript/jquery-3.2.1.min.js"></script> 
+<Script type="text/javascript" src=" .. /JavaScript/d3.min.js"></script> 
+<!--the following 5 js files are required for SP.SOD--> 
+<script type="text/ javascript" src="/_layouts/1033/init.js"></script> 
+<script type="text/javascript" src="/_layouts/MicrosoftAjax. js"></script> 
+<Script type="text/javascript" src="/_layouts/sp.core.js"></script> 
+<script type="text/javascript" src="/_layouts/sp.runtime.js"></script> 
+<script type="text/javascript" src="/_layouts/sp.js"></script> 
+<!--the following 2 js files are required to get the data from SharePoint 2013 lists--> 
+<script type="text/javascript" src="/ _layouts/15/sp.runtime.js"></script> 
+<script type="text/javascript" src="/ _layouts/15/sp.js"></script> 
+</head> 
+<body> 
+<script type="text/ javascript" > 
+${document) 
+	.ready(function(){
+		SP.SOD . executeFunc( 'sp.js' , 'SP.ClinentConext' , getListDirectionary);
+		}); 
+	var clientContext = new SP.ClientContext.get_current (); 
+	var directionary = [[]]; 
+	var csvData = []; 
+	var listName; 
+	var primaryKey; 
+	
+	function updateListData() { 
+
+		if {listName == 11) { 
+			alert("Please select a list from dropdown."); 
+		} 
+		else { 
+			var file = document.getElementByid{"uploader") .files[O]; 
+		
+			//check whether the user has selected a file 
+			if (file.name.length > 0) { 
+				var fileExtension = file.name.split{ '.' ) .pop(); 
+				if (fileExtensi on == 'csv' ) { 
+					//Prepare the reader 
+					var reader = new FileReader(); 
+					reader.onload = function (e) { 
+						processCSV(reader.result); 
+					}; 
+					reader.onerror = function (e) { 
+						alert("An error occurs when reading the CSV file" ); 
+					}; 
+				//Process the file reader.readAsText(file); 
+				} 
+				else { 
+					alert( "Please select a CSV file" ); 
+				} 
+			} 
+		else { 
+			alert( "Please select a file" ); 
+		} 
+	} 
+} 
+function processCSV(csv) { 
+	//Get the update data 
+	csvData = d3.csv.parse(csv); 
+	//Read the primary key 
+	primaryKey = document.getElementByid( "primaryKeyText" ).value; 
+	//Need to get the ID in the list for the Primiary Key 
+	getListDirectionary(primaryKey); 
+} 
+function getListColumnNames(){ 
+	//Check whick list is selected 
+	var listSelected = document.getElementByid( "listChoice" ); 
+	listName = listSelected.options[listSelected.selectedindex].text; 
+	//Get SharePoint list 
+	var list = clientContext.get_web().get_lists().getByTitle(listName); 
+	clientContext.load(list); 
+	var fields = list.get_fields(); 
+	clientContext.load(fields); 
+	clientContext.executeQueryAsync(Function.createDelegate(this, function () { 
+		this.onListFieldQuerySucceeded(fields); }), 
+	Function.createDelegate(this, this.onQueryFailed)); 
+}
+function onListFieldQuerySucceeded(fields) { 
+	var listColumnsNameText = document.getElementByid("listColumnsNameText "); 
+	var information= "" ; 
+	information+= "DisplayName ..... InternalName\n" ; 
+	var fieldEnumerator = fields.getEnumerator(); 
+	while (fieldEnumerator.moveNext()) { 
+		var field = fieldEnumerator.get_current(); 
+		if (!field.get_hidden()) { title= field.get_title(); 
+			if (!title.startsWith( " " )) { 
+				information+= title+ " ..... "+ field.get internalName() + "\n" ; 
+			} 
+		} 
+	} 
+	listColumnsNameText.value information; 
+} 
+function getListDirectionary(primaryKey){ 
+	var list = clientContext.get_web().get_lists().getByTitle(listName); 
+	var query= SP.CamlQuery.createAllitemsQuery(); 
+	var allitems = list.getitems(query); 
+	clientContext.load (allitems, 'Include(ID, ' + primaryKey + ') ' ); 
+	clientContext.executeQueryAsync(Function.createDelegate(this, function () { 
+		this.onSelectQuerySucceeded(allitems, primaryKey); }), 
+		Function.createDelegate(this, this.onQueryFailed)); 
+} 
+function onSelectQuerySucceeded(allitems,primaryKey) { 
+	//Build Directionary 
+	var list Data = [[ 'ID' , primaryKey]]; 
+	var listEnumerator = allitems.getEnumerator (); 
+	while (listEnumerator.moveNext()) { 
+		var currentitem = listEnumerator.get_current(); 
+		listData.push([currentitem.get_item('ID'), currentitem.get item(primaryKey)]); 
+	} 
+	directionary = listData; 
+	//Get the column names for the fields needed to be updated 
+	columnNames = Object.keys(csvData[O]); 
+	//Prepare to write out any issue 
+	var listColumnsNameText = document.getElementByid("listColumnsNameText"); 
+	listColumnsNameText.value 
+	var information= "";
+	
+	//Loop through csvData to update one by one 
+	for (let i = O; i < csvData.length; i++) { 
+	var row= csvData[i]; 
+	var id = GetIDByPrimaryKey(row[primaryKey]); 
+	
+	//Check whether if id is found 
+	if (id == null) { information+= "Insert ..... Key: " + row[primaryKey] +"\n"; 
+	//Update the SharePoint List Data based on ID 
+	InsertListData(columnNames, row); 
+	} 
+	else { information+= "Updating ..... Key: " + row[primaryKey] + "   ID:" + id +
+		"\n" ; 
+		//Update the SharePoint List Data based on ID 
+		UpdateListData(columnNames, id, row); 
+		}
+	} 
+	information += " .............................................\n" 
+	information+= " ...... ALL INSERT/UPDATE ARE COMPLETED ...... \n" 
+	information += " .............................................\n" 
+
+	listColumnsNameText.value = information; 
+} 
+function onQueryFailed(sender, args) { 
+	alert('Error: ' + args.get_message () + '\n' + args.get_stackTrace()); 
+} 
+function GetIDByPrimaryKey(key) { 
+	//Loop through directionary to get ID 
+	//The first row in directionary is the title 
+	//directionary[O] = ["ID", "RequirementID"] 
+	for (let i = 1 ; i < directionary.length; i++) { 
+		if (directionary[i] [1] == key) { 
+			return directionary[i][0]; 
+		} 
+	} 
+} 
+
+function UpdateListData(columnNames, id, row){ 
+
+	var list= clientContext.get_web().get_lists ().getByTitle(listName); 
+	var item= list.getitemByid(id); 
+	//Skip the first column for PrimiaryKey and update each column value 
+	for (let i = l ; i < columnNames.length; i++) { 
+		var internalColumnName = columnNames[i] .replace( " " , "_x0020_" ); 
+		item.set_item(internalColumnName, row[columnNames[i]]); 
+	} 
+	item.update(); 
+	clientContext.executeQueryAsync(Function.createDelegate(this, function () { 
+		this.onUpdateQuerySucceeded (row[columnNames[O]]); }), 
+		Function.createDelegate(this, this.onQueryFailed)); 
+}
+
+function onUpdateQuerySucceeded(primaryKey) { 
+	console.log( "PrimaryKey: " + primaryKey + "has been updated successfully." ); 
+} 
+function InsertListData(columnNames, row){ 
+
+	var list= clientContext.get_web().get_lists().getByTitle(listName); 
+	var itemCreateinfo = new SP.ListitemCreationinformation(); 
+	var listitem = list.additem(itemCreateinfo); 
+	//start the first column for PrimiaryKey and update each column value 
+	for (let i = O; i < columnNames.length; i++) { 
+		var internalColumnName = columnNames[i].replace(" ", "_x0020 "); 
+		listitem.set_item(internalColumnName, row[columnNames[i]]); 
+	} 
+	listitem.update(); 
+	clientContext.load(listitem) ; clientContext.executeQueryAsync {Function.createDelegate {this, function () { 
+		this.oninsertQuerySucceeded(row[columnNames[O]]); }) , 
+		Function.createDelegate(this, this.onQueryFailed)); 
+	} 
+function oninsertQuerySucceeded (primaryKey) { 
+	console.log("PrimaryKey: " + primaryKey + "has been inserted successfully."); 
+} 
+</ script> 
+	<H2>SharePoint List Data Update</H2> 
+	<form>
+		<table style="width: 100%">
+			<tr> 
+				<td style="width: 50%; vertical-align:top">
+					<P><Strong>Step 1: </ strong> Choose a list where your data will be uploaded <br> 
+						<select name="listChoice" id="listChoice" onchange="getListColumnNames()">
+							<option value=""></option>
+							<option value="Objects">Objects</option>
+						</select>
+					</P>
+					<P>
+					<Strong>Step 2: </strong>Verify csv column name matches the <b>Internal Name</ b> for SharePoint column (Space is ok and 
+					will be converted to _x0020 ) and remove all single quote and comma in the data cell<br> 
+					</P> 
+					<P>
+					<Strong>Step 3: </strong> Type in the Internal Name for your primary key column<br>
+						<input type="text" id="primaryKeyText" name="primaryKeyText" > </p> 
+					<P> 
+					<Strong>Step 4: </strong> Browse to your source file {csv) <br> 
+						<input type="file" id="uploader" name="uploader"> 
+					</P> 
+					<P> 
+					<strong>Step 5: </strong> click the Upload button.  <br> 
+					<button type="button" onclick="updateListData() ">Upload</ button> 
+					</P>
+					<P> 
+					<strong>Step 6: </strong> Review the error message on the right hand panel if any when the upload is completed 
+					</P> 
+				</td> 
+				<td style="width: 50%; vertical-align:top"> 
+				Information Panel:<br> 
+				<textarea id="listColumnsNameText" readonly="readonly" rows="30" cols= "80" ></textarea> 
+				</td> 
+			</tr> 
+		</table> 
+	</form> 
+</body> 
+</html> 
